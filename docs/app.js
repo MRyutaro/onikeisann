@@ -18,7 +18,7 @@ const verdictEl = $("verdict"), timerWrap = $("timerWrap");
 const progressFill = $("progressFill");
 const toastEl = $("toast");
 const overlay = $("overlay"), overlayMsg = $("overlayMsg"), startBtn = $("startBtn");
-const nextBtn = $("nextBtn");
+const nextBtn = $("nextBtn"), clearBtn = $("clearBtn"), passBtn = $("passBtn");
 
 const IDLE_MS = 470;            // wait after last stroke before recognizing
 const SET_LEN = 22;            // problems per set
@@ -172,7 +172,7 @@ function renderTurn() {
     padWrap.classList.add("memorize");
     instructEl.classList.add("memo");
     instructEl.textContent = N === 1 ? "おぼえてね" : `おぼえてね（${N}つ あとで こたえる）`;
-    nextBtn.style.display = "";
+    nextBtn.style.display = ""; clearBtn.style.display = "none"; passBtn.style.display = "none";
     clearPad();
   } else {
     phase = "answer";
@@ -180,7 +180,7 @@ function renderTurn() {
     instructEl.classList.remove("memo");
     const ord = N === 1 ? "1つまえ" : `${N}つまえ`;
     instructEl.textContent = `${ord}の こたえ  (${answered + 1}/${SET_LEN})`;
-    nextBtn.style.display = "none";
+    nextBtn.style.display = "none"; clearBtn.style.display = ""; passBtn.style.display = "";
     clearPad();
   }
 }
@@ -281,8 +281,14 @@ function endGame() {
 }
 
 startBtn.addEventListener("click", startGame);
-$("clearBtn").addEventListener("click", () => { if (!locked && phase === "answer") clearPad(); });
+clearBtn.addEventListener("click", () => { if (!locked && phase === "answer") clearPad(); });
 nextBtn.addEventListener("click", () => { if (!locked && playing && phase === "memorize") advanceTurn(); });
+// pass: give up on this one — show the correct answer (not counted as correct) and move on
+passBtn.addEventListener("click", () => {
+  if (locked || !playing || phase !== "answer") return;
+  if (recogTimer) { clearTimeout(recogTimer); recogTimer = null; }
+  showVerdict(set.probs[set.t - level].ans, false);
+});
 
 // ---------- boot ----------
 resize();

@@ -113,6 +113,7 @@ body {
 }
 .btn:active { transform: scale(.97); filter: brightness(1.2); }
 .btn.primary { background: var(--accent); color: #04141f; }
+.btn.pass { background: #3a2f33; color: var(--bad); }
 
 /* overlay */
 .overlay {
