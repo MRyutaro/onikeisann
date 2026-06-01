@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#111418" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>鬼計算</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icon.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top bar: score / timer -->
+    <header id="bar">
+      <div class="stat"><span class="label">スコア</span><span id="score">0</span></div>
+      <div class="stat" id="timerWrap"><span class="label">のこり</span><span id="timer">60</span></div>
+      <div class="stat"><span class="label">ベスト</span><span id="best">0</span></div>
+    </header>
+
+    <!-- Problem -->
+    <section id="problem">
+      <span id="qa">3</span>
+      <span id="op">+</span>
+      <span id="qb">4</span>
+      <span class="eq">=</span>
+      <span id="qres">?</span>
+    </section>
+
+    <!-- Handwriting canvas -->
+    <section id="padWrap">
+      <canvas id="pad"></canvas>
+      <div id="verdict"></div>
+    </section>
+
+    <footer id="controls">
+      <button id="clearBtn" class="btn">けす</button>
+      <button id="modeBtn" class="btn">れんしゅう</button>
+    </footer>
+
+    <!-- Start / result overlay -->
+    <div id="overlay" class="overlay">
+      <h1>鬼計算</h1>
+      <p id="overlayMsg">てがきで こたえよう</p>
+      <button id="startBtn" class="btn primary">スタート</button>
+      <p class="hint">こたえ(0〜9)を ゆびで かいてね</p>
+    </div>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
