@@ -30,8 +30,12 @@ body {
 #bar { display: flex; justify-content: space-between; padding: 10px 4px 6px; }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
 .stat .label { font-size: 11px; color: var(--muted); letter-spacing: .1em; }
-.stat span:last-child { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat span:last-child { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 #timerWrap.warn #timer { color: var(--bad); }
+
+/* set progress bar */
+#progress { height: 6px; border-radius: 99px; background: #2c333c; margin: 4px 4px 0; overflow: hidden; }
+#progressFill { height: 100%; width: 0; background: var(--accent); transition: width .2s ease; }
 
 /* problem */
 #problem {
@@ -39,8 +43,16 @@ body {
   font-weight: 800; font-size: clamp(40px, 13vw, 72px);
   padding: 8px 0 4px; font-variant-numeric: tabular-nums;
 }
-#problem .eq, #problem #op { color: var(--accent); }
-#qres { color: var(--muted); }
+#problem #op { color: var(--accent); }
+#problem.hidden { visibility: hidden; }
+
+/* instruction line: what to write right now */
+#instruct {
+  text-align: center; margin: 0; padding: 2px 8px 4px;
+  font-size: clamp(15px, 4.6vw, 19px); font-weight: 700; color: var(--accent);
+  min-height: 1.4em;
+}
+#instruct.memo { color: var(--muted); }
 
 /* canvas */
 #padWrap { position: relative; flex: 1; display: flex; min-height: 0; padding: 8px 0; }
@@ -61,6 +73,29 @@ body {
 #verdict.show { animation: pop .45s ease-out; }
 #verdict.ok { color: var(--ok); }
 #verdict.bad { color: var(--bad); }
+
+/* "memorize" overlay badge on the pad when no answer is due yet */
+#memoBadge {
+  position: absolute; inset: 0; display: none;
+  align-items: center; justify-content: center;
+  font-size: clamp(28px, 9vw, 48px); font-weight: 800; color: var(--muted);
+  pointer-events: none;
+}
+#padWrap.memorize #memoBadge { display: flex; }
+#padWrap.memorize #pad { opacity: .45; }
+
+/* between-set toast */
+#toast {
+  position: fixed; left: 50%; top: 38%; translate: -50% -50%;
+  z-index: 8; max-width: 86%; text-align: center;
+  background: var(--panel); color: var(--ink);
+  padding: 18px 22px; border-radius: 18px; font-size: 20px; font-weight: 800;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+}
+#toast.show { opacity: 1; }
+#toast .up { color: var(--ok); }
+#toast .down { color: var(--bad); }
 @keyframes pop {
   0% { opacity: 0; transform: scale(.5); }
   25% { opacity: 1; transform: scale(1.05); }
@@ -88,6 +123,7 @@ body {
 }
 .overlay.hidden { display: none; }
 .overlay h1 { font-size: 56px; margin: 0; letter-spacing: .05em; }
-.overlay #overlayMsg { font-size: 20px; color: var(--ink); margin: 0; white-space: pre-line; }
-.overlay .hint { font-size: 14px; color: var(--muted); margin: 0; }
+.overlay #overlayMsg { font-size: 16px; line-height: 1.7; color: var(--ink); margin: 0; width: 100%; max-width: 320px; }
+.overlay #overlayMsg b { color: var(--accent); }
+.overlay .hint { font-size: 13px; color: var(--muted); margin: 0; width: 100%; max-width: 320px; line-height: 1.6; }
 .overlay .btn { width: 220px; flex: none; font-size: 22px; padding: 18px; }

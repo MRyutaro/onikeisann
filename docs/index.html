@@ -13,39 +13,49 @@
 </head>
 <body>
   <div id="app">
-    <!-- Top bar: score / timer -->
     <header id="bar">
-      <div class="stat"><span class="label">スコア</span><span id="score">0</span></div>
-      <div class="stat" id="timerWrap"><span class="label">のこり</span><span id="timer">60</span></div>
-      <div class="stat"><span class="label">ベスト</span><span id="best">0</span></div>
+      <div class="stat"><span class="label">レベル</span><span id="level">1バック</span></div>
+      <div class="stat" id="timerWrap"><span class="label">じかん</span><span id="timer">0:00</span></div>
+      <div class="stat"><span class="label">ベスト</span><span id="best">1バック</span></div>
     </header>
 
-    <!-- Problem -->
+    <!-- progress within the current 22-problem set -->
+    <div id="progress"><div id="progressFill"></div></div>
+
+    <!-- the CURRENT problem (to memorize) -->
     <section id="problem">
       <span id="qa">3</span>
       <span id="op">+</span>
       <span id="qb">4</span>
-      <span class="eq">=</span>
-      <span id="qres">?</span>
     </section>
 
-    <!-- Handwriting canvas -->
+    <!-- what to write right now -->
+    <p id="instruct">おぼえてね</p>
+
+    <!-- handwriting canvas -->
     <section id="padWrap">
       <canvas id="pad"></canvas>
       <div id="verdict"></div>
+      <div id="memoBadge">おぼえる</div>
     </section>
 
     <footer id="controls">
       <button id="clearBtn" class="btn">けす</button>
-      <button id="modeBtn" class="btn">れんしゅう</button>
+      <button id="nextBtn" class="btn primary">つぎへ ▶</button>
     </footer>
 
-    <!-- Start / result overlay -->
+    <!-- toast between sets -->
+    <div id="toast"></div>
+
+    <!-- start / result overlay -->
     <div id="overlay" class="overlay">
       <h1>鬼計算</h1>
-      <p id="overlayMsg">てがきで こたえよう</p>
+      <p id="overlayMsg">いま出る計算は<b>おぼえるだけ</b>。<br>
+こたえを書くのは<b>Nつ前</b>の計算。<br>
+1バックから始まり、できると<br>
+2・3バック…と<b>むずかしくなる</b>。</p>
       <button id="startBtn" class="btn primary">スタート</button>
-      <p class="hint">こたえ(0〜9)を ゆびで かいてね</p>
+      <p class="hint">5分やったら、そのセットの終わりで終了。<br>こたえ(0〜9)は ゆびで手書き。</p>
     </div>
   </div>
   <script type="module" src="./app.js"></script>
