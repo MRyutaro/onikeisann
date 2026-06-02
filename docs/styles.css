@@ -56,6 +56,15 @@ body {
 
 /* canvas */
 #padWrap { position: relative; flex: 1; display: flex; min-height: 0; padding: 8px 0; }
+
+/* per-problem countdown bar (top of the pad) */
+#answerTimer {
+  position: absolute; top: 8px; left: 0; right: 0; height: 6px;
+  border-radius: 99px; overflow: hidden; z-index: 3; opacity: 0; transition: opacity .15s;
+}
+#padWrap.answering #answerTimer { opacity: 1; }
+#answerFill { height: 100%; width: 100%; background: var(--accent); transition: width .08s linear; }
+#answerFill.low { background: var(--bad); }
 #pad {
   flex: 1;
   width: 100%;

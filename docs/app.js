@@ -16,11 +16,14 @@ const qaEl = $("qa"), qbEl = $("qb"), opEl = $("op");
 const problemEl = $("problem"), instructEl = $("instruct"), padWrap = $("padWrap");
 const verdictEl = $("verdict"), timerWrap = $("timerWrap");
 const progressFill = $("progressFill");
+const answerFill = $("answerFill");
 const toastEl = $("toast");
 const overlay = $("overlay"), overlayMsg = $("overlayMsg"), startBtn = $("startBtn");
 const nextBtn = $("nextBtn"), clearBtn = $("clearBtn"), passBtn = $("passBtn");
 
-const IDLE_MS = 470;            // wait after last stroke before recognizing
+const IDLE_MS = 300;            // fallback wait after last stroke (for low-confidence correct)
+const INSTANT_CONF = 0.85;     // confidently-correct answers are accepted instantly (no wait)
+const ANSWER_MS = 4000;        // per-problem time limit; run out -> 不正解 (本家の速いテンポ準拠、調整可)
 const SET_LEN = 22;            // problems per set
 const LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_N = SET_LEN - 1;     // cap back-level so a set stays well-formed
@@ -34,6 +37,7 @@ let startMs = 0, clockTick = null;
 let set = null;                 // { probs:[{a,b,op,ans}], t, correct }
 let maxLevelThisPlay = 1;
 let hasInk = false, recogTimer = null;
+let answerDeadline = 0, answerTimerId = null;
 
 bestEl.textContent = best + "バック";
 levelEl.textContent = level + "バック";
@@ -76,7 +80,7 @@ function strokeBegin(e) {
   hasInk = true;
 }
 function strokeMove(e) {
-  if (!drawing) return;
+  if (!drawing || locked) return;
   e.preventDefault();
   const p = posOf(e);
   ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
@@ -86,7 +90,23 @@ function strokeEnd(e) {
   if (!drawing) return;
   e && e.preventDefault();
   drawing = false;
-  if (hasInk) recogTimer = setTimeout(recognize, IDLE_MS);
+  if (locked || !hasInk || phase !== "answer") return;
+  const expected = set.probs[set.t - level].ans;
+  const grid = getInkGrid();
+  if (!grid) return;
+  const { digit, conf } = predict(grid);
+  // snappy: a confidently-correct digit is accepted the instant the pen lifts
+  if (digit === expected && conf >= INSTANT_CONF) { resolve(true); return; }
+  // otherwise wait a short moment for more strokes, then accept if it reads correct
+  if (recogTimer) clearTimeout(recogTimer);
+  recogTimer = setTimeout(() => {
+    recogTimer = null;
+    if (locked || !playing || phase !== "answer") return;
+    const g = getInkGrid(); if (!g) return;
+    const p = predict(g);
+    if (p.digit === expected || p.probs[expected] >= 0.34) resolve(true);
+    // wrong/unclear: don't commit — let them clear & retry until time runs out
+  }, IDLE_MS);
 }
 pad.addEventListener("pointerdown", strokeBegin);
 pad.addEventListener("pointermove", strokeMove);
@@ -170,6 +190,8 @@ function renderTurn() {
   if (ansIdx < 0) {
     phase = "memorize";
     padWrap.classList.add("memorize");
+    padWrap.classList.remove("answering");
+    stopAnswerTimer();
     instructEl.classList.add("memo");
     instructEl.textContent = N === 1 ? "おぼえてね" : `おぼえてね（${N}つ あとで こたえる）`;
     nextBtn.style.display = ""; clearBtn.style.display = "none"; passBtn.style.display = "none";
@@ -177,11 +199,13 @@ function renderTurn() {
   } else {
     phase = "answer";
     padWrap.classList.remove("memorize");
+    padWrap.classList.add("answering");
     instructEl.classList.remove("memo");
     const ord = N === 1 ? "1つまえ" : `${N}つまえ`;
     instructEl.textContent = `${ord}の こたえ  (${answered + 1}/${SET_LEN})`;
     nextBtn.style.display = "none"; clearBtn.style.display = ""; passBtn.style.display = "";
     clearPad();
+    startAnswerTimer();
   }
 }
 
@@ -191,22 +215,44 @@ function advanceTurn() {
   else renderTurn();
 }
 
-function recognize() {
-  recogTimer = null;
+// per-problem countdown: run out of time -> 不正解
+function startAnswerTimer() {
+  answerDeadline = Date.now() + ANSWER_MS;
+  answerFill.style.width = "100%";
+  answerFill.classList.remove("low");
+  if (answerTimerId) clearInterval(answerTimerId);
+  answerTimerId = setInterval(() => {
+    const frac = Math.max(0, (answerDeadline - Date.now()) / ANSWER_MS);
+    answerFill.style.width = (frac * 100) + "%";
+    answerFill.classList.toggle("low", frac <= 0.34);
+    if (frac <= 0) timeUp();
+  }, 60);
+}
+function stopAnswerTimer() {
+  if (answerTimerId) { clearInterval(answerTimerId); answerTimerId = null; }
+}
+function timeUp() {
+  stopAnswerTimer();
   if (locked || !playing || phase !== "answer") return;
-  const grid = getInkGrid();
-  if (!grid) return;
-  const { digit, probs } = predict(grid);
   const expected = set.probs[set.t - level].ans;
-  // We know the expected answer, so accept the top prediction or a confident
-  // runner-up — reduces unfair misreads while still requiring the right recall.
-  const ok = digit === expected || probs[expected] >= 0.34;
+  const g = getInkGrid();
+  let ok = false;
+  if (g) { const p = predict(g); ok = p.digit === expected || p.probs[expected] >= 0.34; }
+  resolve(ok); // out of time: whatever's drawn is judged; usually 不正解
+}
+
+// commit the current answer turn and move on. Always shows the CORRECT answer
+// (green if right, red if wrong/timeout/pass) so the player learns it.
+function resolve(ok) {
+  stopAnswerTimer();
+  if (recogTimer) { clearTimeout(recogTimer); recogTimer = null; }
   if (ok) set.correct++;
-  showVerdict(ok ? expected : digit, ok);
+  showVerdict(set.probs[set.t - level].ans, ok);
 }
 
 function showVerdict(num, ok) {
   locked = true;
+  drawing = false;
   verdictEl.textContent = num;
   verdictEl.className = ""; void verdictEl.offsetWidth;
   verdictEl.classList.add("show", ok ? "ok" : "bad");
@@ -270,6 +316,8 @@ function startGame() {
 function endGame() {
   playing = false;
   clearInterval(clockTick); clockTick = null;
+  stopAnswerTimer();
+  padWrap.classList.remove("answering");
   if (recogTimer) { clearTimeout(recogTimer); recogTimer = null; }
   const newRecord = maxLevelThisPlay >= best && maxLevelThisPlay > 1;
   overlayMsg.innerHTML =
@@ -286,8 +334,7 @@ nextBtn.addEventListener("click", () => { if (!locked && playing && phase === "m
 // pass: give up on this one — show the correct answer (not counted as correct) and move on
 passBtn.addEventListener("click", () => {
   if (locked || !playing || phase !== "answer") return;
-  if (recogTimer) { clearTimeout(recogTimer); recogTimer = null; }
-  showVerdict(set.probs[set.t - level].ans, false);
+  resolve(false);
 });
 
 // ---------- boot ----------
