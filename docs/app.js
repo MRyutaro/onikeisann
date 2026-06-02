@@ -23,7 +23,8 @@ const nextBtn = $("nextBtn"), clearBtn = $("clearBtn"), passBtn = $("passBtn");
 
 const IDLE_MS = 300;            // fallback wait after last stroke (for low-confidence correct)
 const INSTANT_CONF = 0.85;     // confidently-correct answers are accepted instantly (no wait)
-const ANSWER_MS = 4000;        // per-problem time limit; run out -> 不正解 (本家の速いテンポ準拠、調整可)
+const ANSWER_MS = 4000;        // answer time limit; run out -> 不正解 (本家の速いテンポ準拠、調整可)
+const MEMO_MS = 4000;          // memorize time limit; run out -> auto-advance to next
 const SET_LEN = 22;            // problems per set
 const LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_N = SET_LEN - 1;     // cap back-level so a set stays well-formed
@@ -189,23 +190,22 @@ function renderTurn() {
 
   if (ansIdx < 0) {
     phase = "memorize";
-    padWrap.classList.add("memorize");
-    padWrap.classList.remove("answering");
-    stopAnswerTimer();
+    padWrap.classList.add("memorize", "timed");
     instructEl.classList.add("memo");
     instructEl.textContent = N === 1 ? "おぼえてね" : `おぼえてね（${N}つ あとで こたえる）`;
     nextBtn.style.display = ""; clearBtn.style.display = "none"; passBtn.style.display = "none";
     clearPad();
+    startTurnTimer(MEMO_MS, () => { if (!locked && playing && phase === "memorize") advanceTurn(); });
   } else {
     phase = "answer";
     padWrap.classList.remove("memorize");
-    padWrap.classList.add("answering");
+    padWrap.classList.add("timed");
     instructEl.classList.remove("memo");
     const ord = N === 1 ? "1つまえ" : `${N}つまえ`;
     instructEl.textContent = `${ord}の こたえ  (${answered + 1}/${SET_LEN})`;
     nextBtn.style.display = "none"; clearBtn.style.display = ""; passBtn.style.display = "";
     clearPad();
-    startAnswerTimer();
+    startTurnTimer(ANSWER_MS, timeUp);
   }
 }
 
@@ -215,24 +215,26 @@ function advanceTurn() {
   else renderTurn();
 }
 
-// per-problem countdown: run out of time -> 不正解
-function startAnswerTimer() {
-  answerDeadline = Date.now() + ANSWER_MS;
+// per-turn countdown bar. memorize: run out -> auto-advance. answer: run out -> 不正解.
+let turnDuration = ANSWER_MS, turnExpire = null;
+function startTurnTimer(ms, onExpire) {
+  turnDuration = ms; turnExpire = onExpire;
+  answerDeadline = Date.now() + ms;
   answerFill.style.width = "100%";
   answerFill.classList.remove("low");
   if (answerTimerId) clearInterval(answerTimerId);
   answerTimerId = setInterval(() => {
-    const frac = Math.max(0, (answerDeadline - Date.now()) / ANSWER_MS);
+    const frac = Math.max(0, (answerDeadline - Date.now()) / turnDuration);
     answerFill.style.width = (frac * 100) + "%";
     answerFill.classList.toggle("low", frac <= 0.34);
-    if (frac <= 0) timeUp();
+    if (frac <= 0) { const f = turnExpire; stopTurnTimer(); if (f) f(); }
   }, 60);
 }
-function stopAnswerTimer() {
+function stopTurnTimer() {
   if (answerTimerId) { clearInterval(answerTimerId); answerTimerId = null; }
 }
 function timeUp() {
-  stopAnswerTimer();
+  stopTurnTimer();
   if (locked || !playing || phase !== "answer") return;
   const expected = set.probs[set.t - level].ans;
   const g = getInkGrid();
@@ -244,7 +246,7 @@ function timeUp() {
 // commit the current answer turn and move on. Always shows the CORRECT answer
 // (green if right, red if wrong/timeout/pass) so the player learns it.
 function resolve(ok) {
-  stopAnswerTimer();
+  stopTurnTimer();
   if (recogTimer) { clearTimeout(recogTimer); recogTimer = null; }
   if (ok) set.correct++;
   showVerdict(set.probs[set.t - level].ans, ok);
@@ -316,8 +318,8 @@ function startGame() {
 function endGame() {
   playing = false;
   clearInterval(clockTick); clockTick = null;
-  stopAnswerTimer();
-  padWrap.classList.remove("answering");
+  stopTurnTimer();
+  padWrap.classList.remove("timed");
   if (recogTimer) { clearTimeout(recogTimer); recogTimer = null; }
   const newRecord = maxLevelThisPlay >= best && maxLevelThisPlay > 1;
   overlayMsg.innerHTML =

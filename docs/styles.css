@@ -62,7 +62,7 @@ body {
   position: absolute; top: 8px; left: 0; right: 0; height: 6px;
   border-radius: 99px; overflow: hidden; z-index: 3; opacity: 0; transition: opacity .15s;
 }
-#padWrap.answering #answerTimer { opacity: 1; }
+#padWrap.timed #answerTimer { opacity: 1; }
 #answerFill { height: 100%; width: 100%; background: var(--accent); transition: width .08s linear; }
 #answerFill.low { background: var(--bad); }
 #pad {
