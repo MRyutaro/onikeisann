@@ -27,7 +27,6 @@ const ANSWER_MS = 4000;        // answer time limit; run out -> 不正解 (本�
 const MEMO_MS = 4000;          // memorize time limit; run out -> auto-advance to next
 const SET_LEN = 22;            // problems per set
 const LIMIT_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_N = SET_LEN - 1;     // cap back-level so a set stays well-formed
 const LEVEL_KEY = "onikeisan.level";
 const BEST_KEY = "onikeisan.best";   // best = highest back-level reached
 
@@ -43,7 +42,7 @@ let answerDeadline = 0, answerTimerId = null;
 bestEl.textContent = best + "バック";
 levelEl.textContent = level + "バック";
 
-function clampLevel(n) { return Math.max(1, Math.min(MAX_N, n | 0)); }
+function clampLevel(n) { return Math.max(1, n | 0); }
 
 // ---------- canvas sizing ----------
 let dpr = 1, strokeW = 14;
@@ -268,7 +267,7 @@ function endSet() {
   const acc = set.correct / SET_LEN; // 22 answers per set
   const pct = Math.round(acc * 100);
   let delta = 0, kind = "stay";
-  if (acc >= 0.85 && level < MAX_N) { delta = 1; kind = "up"; }
+  if (acc >= 0.85) { delta = 1; kind = "up"; }
   else if (acc <= 0.65 && level > 1) { delta = -1; kind = "down"; }
   level = clampLevel(level + delta);
   localStorage.setItem(LEVEL_KEY, level);
