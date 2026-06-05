@@ -1,5 +1,5 @@
 // Offline cache for 鬼計算. Bump CACHE on any asset change.
-const CACHE = "onikeisan-v5";
+const CACHE = "onikeisan-v6";
 const ASSETS = [
   "./",
   "./index.html",

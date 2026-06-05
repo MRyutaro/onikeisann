@@ -3,7 +3,8 @@ import { predict } from "./infer.js";
 // ====== 鬼計算 = N-back arithmetic (Dr. Kawashima rules) ======
 // - Each problem is shown one at a time; you only MEMORIZE the current one.
 // - You write the answer of the problem N steps back (1-back, 2-back, ...).
-// - 1 set = 22 problems. After each set, accuracy decides the level:
+// - 1 set = 20 + 2N problems (N = back-level), matching the original 鬼計算
+//   (1-back = 22, 2-back = 24, ...). After each set, accuracy decides the level:
 //     >=85% level up, 66-84% stay, <=65% level down (min 1).
 // - When 5 minutes pass, the current set finishes and the game ends.
 // - Record = highest back-level reached.
@@ -25,7 +26,7 @@ const IDLE_MS = 300;            // fallback wait after last stroke (for low-conf
 const INSTANT_CONF = 0.85;     // confidently-correct answers are accepted instantly (no wait)
 const ANSWER_MS = 4000;        // answer time limit; run out -> 不正解 (本家の速いテンポ準拠、調整可)
 const MEMO_MS = 4000;          // memorize time limit; run out -> auto-advance to next
-const SET_LEN = 22;            // problems per set
+const setLenFor = (n) => 20 + 2 * n; // problems per set, depends on back-level N
 const LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 const LEVEL_KEY = "onikeisan.level";
 const BEST_KEY = "onikeisan.best";   // best = highest back-level reached
@@ -164,19 +165,20 @@ function genProblem() {
   const a = rnd(10), b = rnd(a + 1); return { a, b, op: "−", ans: a - b };
 }
 function newSet() {
+  const len = setLenFor(level);
   const probs = [];
-  for (let i = 0; i < SET_LEN; i++) probs.push(genProblem());
-  return { probs, t: 0, correct: 0 };
+  for (let i = 0; i < len; i++) probs.push(genProblem());
+  return { probs, len, t: 0, correct: 0 };
 }
 
 // ---------- turn engine ----------
 // turn t (0-based) over a set: show problem[t] (memorize), answer due for
-// problem[t-N]. Total turns = SET_LEN + N; answers due on turns N..SET_LEN+N-1.
+// problem[t-N]. Total turns = set.len + N; answers due on turns N..set.len+N-1.
 function renderTurn() {
-  const N = level, t = set.t;
+  const N = level, t = set.t, LEN = set.len;
   const showIdx = t, ansIdx = t - N;
 
-  if (showIdx < SET_LEN) {
+  if (showIdx < LEN) {
     const p = set.probs[showIdx];
     qaEl.textContent = p.a; opEl.textContent = p.op; qbEl.textContent = p.b;
     problemEl.classList.remove("hidden");
@@ -185,7 +187,7 @@ function renderTurn() {
   }
 
   const answered = Math.max(0, t - N);
-  progressFill.style.width = (answered / SET_LEN * 100) + "%";
+  progressFill.style.width = (answered / LEN * 100) + "%";
 
   if (ansIdx < 0) {
     phase = "memorize";
@@ -201,7 +203,7 @@ function renderTurn() {
     padWrap.classList.add("timed");
     instructEl.classList.remove("memo");
     const ord = N === 1 ? "1つまえ" : `${N}つまえ`;
-    instructEl.textContent = `${ord}の こたえ  (${answered + 1}/${SET_LEN})`;
+    instructEl.textContent = `${ord}の こたえ  (${answered + 1}/${LEN})`;
     nextBtn.style.display = "none"; clearBtn.style.display = ""; passBtn.style.display = "";
     clearPad();
     startTurnTimer(ANSWER_MS, timeUp);
@@ -210,7 +212,7 @@ function renderTurn() {
 
 function advanceTurn() {
   set.t++;
-  if (set.t >= SET_LEN + level) endSet();
+  if (set.t >= set.len + level) endSet();
   else renderTurn();
 }
 
@@ -264,7 +266,7 @@ function vibrate(p) { if (navigator.vibrate) try { navigator.vibrate(p); } catch
 
 // ---------- set / level flow ----------
 function endSet() {
-  const acc = set.correct / SET_LEN; // 22 answers per set
+  const acc = set.correct / set.len; // (20 + 2N) answers per set
   const pct = Math.round(acc * 100);
   let delta = 0, kind = "stay";
   if (acc >= 0.85) { delta = 1; kind = "up"; }
